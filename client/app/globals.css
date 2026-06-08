@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ---------- shadcn tokens (HSL channels) ---------- */
+    --background: 0 0% 100%;
+    --foreground: 220 28% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 28% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 28% 16%;
+    --primary: 218 90% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 28% 16%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 16% 95%;
+    --accent-foreground: 220 28% 16%;
+    --destructive: 3 74% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 92%;
+    --input: 220 13% 90%;
+    --ring: 218 90% 60%;
+    --radius: 0.65rem;
+
+    /* ---------- doit tokens (full colors) ---------- */
+    --navy: #1d2433;
+    --blue: #3d7ff5;
+    --blue-press: #2f6ee0;
+    --blue-soft-bg: #eaf1fe;
+
+    --p-blue: #3d7ff5;
+    --p-violet: #8b5cf6;
+    --p-green: #1f9d63;
+    --p-amber: #e0901a;
+    --p-rose: #e5557a;
+
+    --overdue: #e0483f;
+    --overdue-bg: #fdecea;
+
+    --canvas: #ffffff;
+    --side-bg: #fafafb;
+    --panel: #ffffff;
+    --ink: #1d2433;
+    --ink-2: #5a6373;
+    --ink-3: #9aa1b0;
+    --line: #ececef;
+    --line-2: #e3e4e8;
+    --hover: #f5f6f8;
+    --active: #eef1f6;
+    --chip: #f3f4f6;
+  }
+
+  .dark {
+    /* ---------- shadcn tokens (HSL channels) ---------- */
+    --background: 222 22% 8%;
+    --foreground: 222 25% 92%;
+    --card: 222 17% 12%;
+    --card-foreground: 222 25% 92%;
+    --popover: 222 17% 12%;
+    --popover-foreground: 222 25% 92%;
+    --primary: 218 90% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 14% 16%;
+    --secondary-foreground: 222 25% 92%;
+    --muted: 222 14% 16%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 222 14% 18%;
+    --accent-foreground: 222 25% 92%;
+    --destructive: 3 74% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 14% 18%;
+    --input: 222 14% 20%;
+    --ring: 218 90% 60%;
+
+    /* ---------- doit tokens (full colors) ---------- */
+    --blue-soft-bg: rgba(61, 127, 245, 0.16);
+    --overdue-bg: rgba(224, 72, 63, 0.16);
+
+    --canvas: #0f1116;
+    --side-bg: #14161d;
+    --panel: #181b22;
+    --ink: #e9ecf3;
+    --ink-2: #9aa2b3;
+    --ink-3: #646c7d;
+    --line: #242832;
+    --line-2: #2b303c;
+    --hover: #1b1f27;
+    --active: #222734;
+    --chip: #20242e;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-canvas text-ink;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* thin scrollbars to match the prototype */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--line-2);
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-3);
+    background-clip: padding-box;
+  }
+  ::selection {
+    background: var(--blue);
+    color: #fff;
+  }
+}
