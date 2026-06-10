@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ProjectRole {
+  OWNER
+  MEMBER
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum CalendarSyncMode {
+  ALL
+  ONLY_NEW
+  NONE
+}
+
+model User {
+  id                  String          @id @default(cuid())
+  name                String
+  email               String          @unique
+  avatarUrl           String?
+  googleAccountId     String?         @unique
+  googleAccessToken   String?         @db.Text
+  googleRefreshToken  String?         @db.Text
+  calendarSyncEnabled Boolean         @default(false)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  ownedProjects       Project[]       @relation("ProjectOwner")
+  memberships         ProjectMember[]
+  createdTasks        Task[]          @relation("TaskCreator")
+  assignedTasks       Task[]          @relation("TaskResponsible")
+  createdInvites      ProjectInvite[] @relation("InviteCreator")
+}
+
+model Project {
+  id        String          @id @default(cuid())
+  name      String
+  color     String
+  ownerId   String
+  owner     User            @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   ProjectMember[]
+  invites   ProjectInvite[]
+  tasks     Task[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model ProjectMember {
+  id               String           @id @default(cuid())
+  projectId        String
+  userId           String
+  role             ProjectRole      @default(MEMBER)
+  calendarSyncMode CalendarSyncMode @default(NONE)
+  joinedAt         DateTime         @default(now())
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+}
+
+model ProjectInvite {
+  id          String       @id @default(cuid())
+  projectId   String
+  email       String?
+  token       String       @unique
+  status      InviteStatus @default(PENDING)
+  createdById String
+  expiresAt   DateTime
+  createdAt   DateTime     @default(now())
+  acceptedAt  DateTime?
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("InviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Task {
+  id                    String     @id @default(cuid())
+  projectId             String
+  createdById           String
+  responsibleId         String?
+  title                 String
+  description           String?    @db.Text
+  details               String?    @db.Text
+  day                   DateTime
+  deadline              DateTime?
+  status                TaskStatus @default(PENDING)
+  order                 Int        @default(0)
+  googleCalendarEventId String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  project               Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy             User       @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  responsible           User?      @relation("TaskResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, day])
+  @@index([responsibleId])
+}
