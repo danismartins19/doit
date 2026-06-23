@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { TaskResponseDtoStatusEnum } from "@/services/api-back";
 
 import {
   CommandDialog,
@@ -19,19 +20,26 @@ import {
 import { useStore } from "@/lib/store";
 import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useSearchHook } from "@/services/hooks";
 
 interface SearchPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (t: Task) => void;
+  onToast: (msg: string) => void;
 }
 
-export function SearchPalette({ open, onOpenChange, onPick }: SearchPaletteProps) {
-  const { tasks, projects, people } = useStore();
+export function SearchPalette({ open, onOpenChange, onPick, onToast }: SearchPaletteProps) {
+  const { projects } = useStore();
+  const { tasks: searchTasks } = useSearchHook();
   const [q, setQ] = React.useState("");
+  const [results, setResults] = React.useState<Task[]>([]);
 
   React.useEffect(() => {
-    if (!open) setQ("");
+    if (!open) {
+      setQ("");
+      setResults([]);
+    }
   }, [open]);
 
   const projMap = React.useMemo(() => {
@@ -41,12 +49,35 @@ export function SearchPalette({ open, onOpenChange, onPick }: SearchPaletteProps
   }, [projects]);
 
   const query = q.trim().toLowerCase();
-  const results = query
-    ? tasks
-        .filter((t) => t.title.toLowerCase().includes(query))
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .slice(0, 40)
-    : [];
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!query) {
+      setResults([]);
+      return;
+    }
+
+    const timeout = window.setTimeout(async () => {
+      searchTasks(query)
+        .then((response) => {
+          if (!cancelled) {
+            setResults(response.data);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setResults([]);
+            onToast("Nao foi possivel buscar tarefas");
+          }
+        });
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [onToast, query, searchTasks]);
 
   const highlight = (title: string) => {
     const i = title.toLowerCase().indexOf(query);
@@ -83,8 +114,9 @@ export function SearchPalette({ open, onOpenChange, onPick }: SearchPaletteProps
         )}
         {results.map((t) => {
           const p = projMap[t.projectId];
-          const d = parseIso(t.date);
+          const d = parseIso(t.day);
           const st = taskState(t);
+          const done = t.status === TaskResponseDtoStatusEnum.Done;
           return (
             <CommandItem
               key={t.id}
@@ -99,7 +131,7 @@ export function SearchPalette({ open, onOpenChange, onPick }: SearchPaletteProps
               <span
                 className={cn(
                   "shrink truncate text-[14.5px] font-medium",
-                  t.done && "text-ink-3 line-through",
+                  done && "text-ink-3 line-through",
                 )}
               >
                 {highlight(t.title)}
@@ -108,7 +140,7 @@ export function SearchPalette({ open, onOpenChange, onPick }: SearchPaletteProps
                 <span className="flex items-center gap-1.5 font-semibold text-ink-2">
                   <span
                     className="h-[7px] w-[7px] rounded-full"
-                    style={{ background: p.raw }}
+                    style={{ background: p?.color }}
                   />
                   {p.name}
                 </span>

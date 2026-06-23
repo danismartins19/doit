@@ -12,13 +12,31 @@ import { SummaryModal } from "@/components/doit/summary-modal";
 import { TaskDetail } from "@/components/doit/task-detail";
 import { TaskList } from "@/components/doit/task-list";
 import { TopBar } from "@/components/doit/top-bar";
-import { addDays, iso, parseIso, TODAY } from "@/lib/date-utils";
+import { addDays, dateKey, iso, parseIso, TODAY } from "@/lib/date-utils";
 import { useStore } from "@/lib/store";
 import type { Task } from "@/lib/types";
+import { useProjectsHook, useTasksHook, useUsersHook } from "@/services/hooks";
+import type { ProjectResponseDto } from "@/services/api-back";
 
 export function DoitApp() {
   const store = useStore();
-  const { tasks, projects, currentId, current, selectProject, addTask } = store;
+  const {
+    tasks,
+    projects,
+    currentId,
+    current,
+    selectProject,
+    error,
+    setError,
+    setLoading,
+    setProjects,
+    setTasks,
+    setUser,
+    upsertProject,
+  } = store;
+  const { me } = useUsersHook();
+  const { findAll: findAllProjects } = useProjectsHook();
+  const { findAll: findAllTasks } = useTasksHook();
 
   const [viewDate, setViewDate] = React.useState<Date>(new Date(TODAY));
   const [shareOpen, setShareOpen] = React.useState(false);
@@ -35,6 +53,43 @@ export function DoitApp() {
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2200);
   };
+
+  const loadHome = React.useCallback(() => {
+    setLoading(true);
+    setError(null);
+
+    Promise.all([me(), findAllProjects()])
+      .then(async ([userResponse, projectsResponse]) => {
+        const nextProjects = projectsResponse.data;
+        setUser(userResponse.data);
+        setProjects(nextProjects);
+
+        const taskResponses = await Promise.all(
+          nextProjects.map((project) => findAllTasks(project.id)),
+        );
+        setTasks(taskResponses.flatMap((response) => response.data));
+      })
+      .catch(() => {
+        setUser(null);
+        setProjects([]);
+        setTasks([]);
+        setError("Nao foi possivel carregar seus dados");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [findAllProjects, findAllTasks, me, setError, setLoading, setProjects, setTasks, setUser]);
+
+  React.useEffect(() => {
+    loadHome();
+  }, [loadHome]);
+
+  React.useEffect(() => {
+    if (error) {
+      showToast(error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
 
   // ⌘K / Ctrl+K to open search
   React.useEffect(() => {
@@ -55,14 +110,13 @@ export function DoitApp() {
     setSummaryOpen(true);
   };
 
-  const handleCreateProject = (name: string, raw: string) => {
-    store.createProject(name, raw);
-    setNewProjOpen(false);
+  const handleProjectCreated = (project: ProjectResponseDto) => {
+    upsertProject(project);
   };
 
   const goToTask = (t: Task) => {
     selectProject(t.projectId);
-    setViewDate(parseIso(t.date));
+    setViewDate(parseIso(t.day));
     setSummaryOpen(false);
     setSearchOpen(false);
     setTimeout(() => setDetailId(t.id), 60);
@@ -79,7 +133,7 @@ export function DoitApp() {
   };
 
   const dayTasks = tasks.filter(
-    (t) => t.projectId === currentId && t.date === iso(viewDate),
+    (t) => t.projectId === currentId && dateKey(t.day) === iso(viewDate),
   );
   const projectTasks = tasks.filter((t) => t.projectId === currentId);
   const detailTask = detailId ? tasks.find((t) => t.id === detailId) ?? null : null;
@@ -109,7 +163,9 @@ export function DoitApp() {
             project={current}
             viewDate={viewDate}
             onOpenTask={openDetail}
-            onAdd={(title, deadline) => addTask(title, deadline, iso(viewDate))}
+            projectId={currentId}
+            day={iso(viewDate)}
+            onToast={showToast}
           />
         </div>
       </main>
@@ -123,14 +179,21 @@ export function DoitApp() {
       <NewProjectModal
         open={newProjOpen}
         onOpenChange={setNewProjOpen}
-        onCreate={handleCreateProject}
+        onCreated={handleProjectCreated}
+        onToast={showToast}
       />
-      <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} onPick={goToTask} />
+      <SearchPalette
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onPick={goToTask}
+        onToast={showToast}
+      />
       <HistoryDrawer open={historyOpen} onOpenChange={setHistoryOpen} />
       <TaskDetail
         task={detailTask}
         project={detailProject}
         onOpenChange={(o) => !o && setDetailId(null)}
+        onToast={showToast}
       />
 
       {toast && (

@@ -1,22 +1,44 @@
 "use client";
 
-import { apiRequest } from "../api-client";
-import type { CalendarSyncMode, InviteResponse, ProjectResponse } from "../types";
+import { useCallback, useMemo } from "react";
+import { AcceptInviteDto, CreateInviteDto, InvitesApi } from "../api-back";
+import "../api";
 
 export function useInvitesHook() {
+  const invitesApi = useMemo(() => new InvitesApi(), []);
+
+  const create = useCallback(
+    async (projectId: string, createInviteDto: CreateInviteDto) => {
+      return invitesApi.invitesControllerCreate(projectId, createInviteDto);
+    },
+    [invitesApi],
+  );
+
+  const findOne = useCallback(
+    async (tokenInvite: string) => {
+      return invitesApi.invitesControllerGet(tokenInvite);
+    },
+    [invitesApi],
+  );
+
+  const accept = useCallback(
+    async (tokenInvite: string, acceptInviteDto: AcceptInviteDto) => {
+      return invitesApi.invitesControllerAccept(tokenInvite, acceptInviteDto);
+    },
+    [invitesApi],
+  );
+
+  const decline = useCallback(
+    async (tokenInvite: string) => {
+      return invitesApi.invitesControllerDecline(tokenInvite);
+    },
+    [invitesApi],
+  );
+
   return {
-    createInvite: (projectId: string, data: { email?: string; expiresInDays?: number }) =>
-      apiRequest<InviteResponse>(`/projects/${projectId}/invites`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
-    getInvite: (token: string) => apiRequest<InviteResponse>(`/invites/${token}`),
-    acceptInvite: (token: string, calendarSyncMode: CalendarSyncMode) =>
-      apiRequest<ProjectResponse>(`/invites/${token}/accept`, {
-        method: "POST",
-        body: JSON.stringify({ calendarSyncMode }),
-      }),
-    declineInvite: (token: string) =>
-      apiRequest<{ ok: boolean }>(`/invites/${token}/decline`, { method: "POST" }),
+    create,
+    findOne,
+    accept,
+    decline,
   };
 }

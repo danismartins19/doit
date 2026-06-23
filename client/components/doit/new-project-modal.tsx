@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -18,14 +19,19 @@ import {
   type NewProjectValues,
 } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
+import { useProjectsHook } from "@/services/hooks";
+import type { ProjectResponseDto } from "@/services/api-back";
 
 interface NewProjectModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (name: string, color: string) => void;
+  onCreated: (project: ProjectResponseDto) => void;
+  onToast: (msg: string) => void;
 }
 
-export function NewProjectModal({ open, onOpenChange, onCreate }: NewProjectModalProps) {
+export function NewProjectModal({ open, onOpenChange, onCreated, onToast }: NewProjectModalProps) {
+  const [isCreating, setIsCreating] = useState(false);
+  const { create, findOne } = useProjectsHook();
   const form = useForm<NewProjectValues>({
     resolver: zodResolver(newProjectSchema),
     defaultValues: { name: "", color: PROJECT_COLORS[0] },
@@ -33,16 +39,28 @@ export function NewProjectModal({ open, onOpenChange, onCreate }: NewProjectModa
 
   const color = form.watch("color");
 
-  const submit = form.handleSubmit((values) => {
-    onCreate(values.name.trim(), values.color);
-    form.reset({ name: "", color: PROJECT_COLORS[0] });
-    onOpenChange(false);
+  const submit = form.handleSubmit(async (values) => {
+    setIsCreating(true);
+
+    try {
+      const response = await create({ name: values.name.trim(), color: values.color });
+      const projectResponse = await findOne(response.data.id);
+      onCreated(projectResponse.data);
+      form.reset({ name: "", color: PROJECT_COLORS[0] });
+      onOpenChange(false);
+      onToast("Projeto criado com sucesso");
+    } catch {
+      onToast("Nao foi possivel criar o projeto");
+    } finally {
+      setIsCreating(false);
+    }
   });
 
   return (
     <Dialog
       open={open}
       onOpenChange={(o) => {
+        if (isCreating) return;
         if (!o) form.reset({ name: "", color: PROJECT_COLORS[0] });
         onOpenChange(o);
       }}
@@ -53,7 +71,12 @@ export function NewProjectModal({ open, onOpenChange, onCreate }: NewProjectModa
         </DialogHeader>
         <DialogBody>
           <form onSubmit={submit}>
-            <Input autoFocus placeholder="Nome do projeto" {...form.register("name")} />
+            <Input
+              autoFocus
+              disabled={isCreating}
+              placeholder="Nome do projeto"
+              {...form.register("name")}
+            />
             {form.formState.errors.name && (
               <p className="mt-2 text-[12.5px] font-medium text-destructive">
                 {form.formState.errors.name.message}
@@ -65,6 +88,7 @@ export function NewProjectModal({ open, onOpenChange, onCreate }: NewProjectModa
                 <button
                   key={c}
                   type="button"
+                  disabled={isCreating}
                   onClick={() => form.setValue("color", c)}
                   style={{ background: c }}
                   className={cn(
@@ -77,8 +101,8 @@ export function NewProjectModal({ open, onOpenChange, onCreate }: NewProjectModa
               ))}
             </div>
 
-            <Button type="submit" className="h-[42px] w-full text-sm">
-              Criar projeto
+            <Button type="submit" disabled={isCreating} className="h-[42px] w-full text-sm">
+              {isCreating ? "Criando..." : "Criar projeto"}
             </Button>
           </form>
         </DialogBody>

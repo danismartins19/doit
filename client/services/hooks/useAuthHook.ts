@@ -1,19 +1,35 @@
 "use client";
 
-import { apiBaseUrl, apiRequest } from "../api-client";
-import type { UserResponse } from "../types";
+import { useCallback, useMemo } from "react";
+import { AuthApi, UpdateCalendarPreferenceDto } from "../api-back";
+import { apiBasePath } from "../api";
 
 export function useAuthHook() {
-  return {
-    getMe: () => apiRequest<UserResponse>("/auth/me"),
-    logout: () => apiRequest<{ ok: boolean }>("/auth/logout", { method: "POST" }),
-    loginWithGoogle: () => {
-      window.location.href = `${apiBaseUrl}/auth/google`;
+  const authApi = useMemo(() => new AuthApi(), []);
+
+  const loginWithGoogle = useCallback(() => {
+    window.location.href = `${apiBasePath}/auth/google`;
+  }, []);
+
+  const me = useCallback(async () => {
+    return authApi.authControllerMe();
+  }, [authApi]);
+
+  const logout = useCallback(async () => {
+    return authApi.authControllerLogout();
+  }, [authApi]);
+
+  const updateCalendarPreference = useCallback(
+    async (updateCalendarPreferenceDto: UpdateCalendarPreferenceDto) => {
+      return authApi.authControllerUpdateCalendarPreference(updateCalendarPreferenceDto);
     },
-    updateCalendarPreference: (calendarSyncEnabled: boolean) =>
-      apiRequest<UserResponse>("/auth/me/calendar-preferences", {
-        method: "PATCH",
-        body: JSON.stringify({ calendarSyncEnabled }),
-      }),
+    [authApi],
+  );
+
+  return {
+    loginWithGoogle,
+    me,
+    logout,
+    updateCalendarPreference,
   };
 }

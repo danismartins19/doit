@@ -26,6 +26,5 @@ export type NewProjectValues = z.infer<typeof newProjectSchema>;
 
 export const inviteSchema = z.object({
   email: z.string().trim().min(1, "Informe um e-mail").email("E-mail inválido"),
-  role: z.enum(["view", "edit"]),
 });
 export type InviteValues = z.infer<typeof inviteSchema>;

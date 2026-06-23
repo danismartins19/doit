@@ -12,6 +12,12 @@ interface UserAvatarProps {
 
 /** Colored initials avatar. Size drives both the circle and the font. */
 export function UserAvatar({ person, size = 26, className, title }: UserAvatarProps) {
+  const palette = ["#3d7ff5", "#8b5cf6", "#1f9d63", "#e0901a", "#e5557a", "#0ea5b7"];
+  const color = palette[
+    Array.from(person.id).reduce((sum, char) => sum + char.charCodeAt(0), 0) %
+      palette.length
+  ];
+
   return (
     <Avatar
       className={cn(className)}
@@ -19,7 +25,7 @@ export function UserAvatar({ person, size = 26, className, title }: UserAvatarPr
       title={title ?? person.name}
     >
       <AvatarFallback
-        style={{ background: person.color, fontSize: size * 0.42 }}
+        style={{ background: color, fontSize: size * 0.42 }}
       >
         {initials(person.name)}
       </AvatarFallback>

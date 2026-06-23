@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   addDays,
+  dateKey,
   dayStatus,
   diffDays,
   iso,
@@ -39,7 +40,8 @@ export function CalendarBody({ viewDate, projectTasks, onPick }: CalendarPopover
   const byDay = React.useMemo(() => {
     const m: Record<string, Task[]> = {};
     projectTasks.forEach((t) => {
-      (m[t.date] = m[t.date] || []).push(t);
+      const key = dateKey(t.day);
+      (m[key] = m[key] || []).push(t);
     });
     return m;
   }, [projectTasks]);

@@ -11,10 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { diffDays, parseIso, relLabel, shortDate, TODAY } from "@/lib/date-utils";
+import { dateKey, diffDays, parseIso, relLabel, shortDate, TODAY } from "@/lib/date-utils";
 import { useStore } from "@/lib/store";
 import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { TaskResponseDtoStatusEnum } from "@/services/api-back";
 
 interface SummaryModalProps {
   open: boolean;
@@ -25,15 +26,22 @@ interface SummaryModalProps {
 export function SummaryModal({ open, onOpenChange, onGoToTask }: SummaryModalProps) {
   const { current: project, tasks } = useStore();
 
-  const pending = tasks.filter((t) => t.projectId === project.id && !t.done);
+  if (!project) {
+    return null;
+  }
+
+  const pending = tasks.filter(
+    (t) => t.projectId === project.id && t.status !== TaskResponseDtoStatusEnum.Done,
+  );
   const days: Record<string, Task[]> = {};
   pending.forEach((t) => {
-    (days[t.date] = days[t.date] || []).push(t);
+    const key = dateKey(t.day);
+    (days[key] = days[key] || []).push(t);
   });
   // descending: future first, overdue/past last
   const orderedDays = Object.keys(days).sort((a, b) => b.localeCompare(a));
   const totalOverdue = pending.filter(
-    (t) => diffDays(parseIso(t.date), TODAY) < 0,
+    (t) => diffDays(parseIso(t.day), TODAY) < 0,
   ).length;
 
   return (
@@ -43,7 +51,7 @@ export function SummaryModal({ open, onOpenChange, onGoToTask }: SummaryModalPro
           <div className="flex items-center gap-2.5">
             <span
               className="h-[11px] w-[11px] rounded-full"
-              style={{ background: project.raw }}
+              style={{ background: project.color }}
             />
             <DialogTitle>{project.name}</DialogTitle>
           </div>

@@ -65,6 +65,10 @@ interface HistoryDrawerProps {
 export function HistoryDrawer({ open, onOpenChange }: HistoryDrawerProps) {
   const { current: project, activity, people } = useStore();
 
+  if (!project) {
+    return null;
+  }
+
   const list = activity.filter((a) => a.projectId === project.id);
   const days: Record<string, Activity[]> = {};
   list.forEach((a) => {
@@ -98,6 +102,7 @@ export function HistoryDrawer({ open, onOpenChange }: HistoryDrawerProps) {
               </div>
               {days[dk].map((a, i) => {
                 const p = people[a.by];
+                if (!p) return null;
                 const fn = ACT_TEXT[a.kind] ?? ACT_TEXT.edit;
                 const name = p.name === "Você" ? "Você" : p.name.split(" ")[0];
                 const last = i === days[dk].length - 1;

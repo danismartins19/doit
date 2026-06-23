@@ -1,31 +1,73 @@
 "use client";
 
 import { Inbox } from "lucide-react";
+import { TaskResponseDtoStatusEnum, UpdateTaskStatusDtoStatusEnum } from "@/services/api-back";
 
 import { QuickAdd } from "@/components/doit/quick-add";
 import { TaskRow } from "@/components/doit/task-row";
 import { relLabel } from "@/lib/date-utils";
 import { useStore } from "@/lib/store";
 import type { Project, Task } from "@/lib/types";
+import { useTasksHook } from "@/services/hooks";
 
 interface TaskListProps {
   tasks: Task[];
-  project: Project;
+  project: Project | null;
   viewDate: Date;
   onOpenTask: (id: string) => void;
-  onAdd: (title: string, deadline: string | null) => void;
+  projectId: string;
+  day: string;
+  onToast: (msg: string) => void;
 }
 
-export function TaskList({ tasks, project, viewDate, onOpenTask, onAdd }: TaskListProps) {
-  const { people, toggleTask } = useStore();
-  const pending = tasks.filter((t) => !t.done);
-  const done = tasks.filter((t) => t.done);
-  const showAssignee = project.members.length > 1;
+export function TaskList({ tasks, project, viewDate, onOpenTask, projectId, day, onToast }: TaskListProps) {
+  const { loading, upsertTask } = useStore();
+  const { updateStatus } = useTasksHook();
+  const pending = tasks.filter((t) => t.status !== TaskResponseDtoStatusEnum.Done);
+  const done = tasks.filter((t) => t.status === TaskResponseDtoStatusEnum.Done);
+  const showAssignee = (project?.members?.length ?? 0) > 1;
+
+  const onToggle = async (id: string) => {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+
+    const status =
+      task.status === TaskResponseDtoStatusEnum.Done
+        ? UpdateTaskStatusDtoStatusEnum.Pending
+        : UpdateTaskStatusDtoStatusEnum.Done;
+
+    try {
+      const response = await updateStatus(id, { status });
+      upsertTask(response.data);
+      onToast("Tarefa atualizada");
+    } catch {
+      onToast("Nao foi possivel atualizar a tarefa");
+    }
+  };
+
+  if (!project) {
+    return (
+      <div className="mx-auto max-w-[660px] px-[30px] py-16 text-center text-ink-3">
+        {loading ? (
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="h-10 animate-pulse rounded-[10px] bg-chip" />
+            ))}
+          </div>
+        ) : (
+          <>
+            <Inbox className="mx-auto mb-4 h-6 w-6" />
+            <p className="text-[13.5px]">Crie um projeto para comecar.</p>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-[660px] px-[30px] pb-20 pt-3.5">
       <span className="mb-[18px] inline-flex items-center gap-[7px] rounded-md bg-chip py-1 pl-2 pr-2.5 text-[12.5px] font-semibold text-ink-2">
-        <span className="h-2 w-2 rounded-full" style={{ background: project.raw }} />
+        <span className="h-2 w-2 rounded-full" style={{ background: project.color }} />
         {project.name}
       </span>
 
@@ -34,13 +76,18 @@ export function TaskList({ tasks, project, viewDate, onOpenTask, onAdd }: TaskLi
           <TaskRow
             key={t.id}
             task={t}
-            person={people[t.by]}
+            person={t.responsible ?? t.createdBy}
             showAssignee={showAssignee}
-            onToggle={toggleTask}
+            onToggle={onToggle}
             onOpen={onOpenTask}
           />
         ))}
-        <QuickAdd onAdd={onAdd} />
+        <QuickAdd
+          projectId={projectId}
+          day={day}
+          onCreated={upsertTask}
+          onToast={onToast}
+        />
       </div>
 
       {pending.length === 0 && done.length === 0 && (
@@ -68,9 +115,9 @@ export function TaskList({ tasks, project, viewDate, onOpenTask, onAdd }: TaskLi
               <TaskRow
                 key={t.id}
                 task={t}
-                person={people[t.by]}
+                person={t.responsible ?? t.createdBy}
                 showAssignee={showAssignee}
-                onToggle={toggleTask}
+                onToggle={onToggle}
                 onOpen={onOpenTask}
               />
             ))}

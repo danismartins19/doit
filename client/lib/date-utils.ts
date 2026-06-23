@@ -1,10 +1,11 @@
 /* ============ doit — date helpers (pt-BR) ============ */
+import { TaskResponseDtoStatusEnum } from "@/services/api-back";
 import type { Task, DayStatus, TaskState } from "./types";
 
 /** Project "today" — fixed so the seed data reads consistently.
  *  In a real app, replace with `new Date()` (normalized to midnight). */
 export const TODAY = (() => {
-  const d = new Date(2026, 5, 6); // 6 jun 2026
+  const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
 })();
@@ -37,8 +38,18 @@ export function iso(date: Date): string {
 }
 
 export function parseIso(s: string): Date {
+  if (s.includes("T")) {
+    const d = new Date(s);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
+}
+
+export function dateKey(value: string | Date): string {
+  return iso(value instanceof Date ? value : parseIso(value));
 }
 
 export function diffDays(a: Date, b: Date): number {
@@ -80,9 +91,11 @@ export function shortDate(date: Date): string {
 
 /** done | overdue (expired by deadline or past its day) | pending */
 export function taskState(t: Task): TaskState {
-  if (t.done) return "done";
-  const overByDeadline = !!t.deadline && parseIso(t.deadline) < TODAY;
-  const overByDay = parseIso(t.date) < TODAY;
+  if (t.status === TaskResponseDtoStatusEnum.Done) return "done";
+  const deadline =
+    typeof t.deadline === "string" && t.deadline ? parseIso(t.deadline) : null;
+  const overByDeadline = !!deadline && deadline < TODAY;
+  const overByDay = parseIso(t.day) < TODAY;
   return overByDeadline || overByDay ? "overdue" : "pending";
 }
 
@@ -90,7 +103,7 @@ export function taskState(t: Task): TaskState {
 export function dayStatus(tasksOnDay: Task[]): DayStatus {
   if (!tasksOnDay || !tasksOnDay.length) return null;
   if (tasksOnDay.some((t) => taskState(t) === "overdue")) return "overdue";
-  if (tasksOnDay.some((t) => !t.done)) return "pending";
+  if (tasksOnDay.some((t) => t.status !== TaskResponseDtoStatusEnum.Done)) return "pending";
   return "done";
 }
 

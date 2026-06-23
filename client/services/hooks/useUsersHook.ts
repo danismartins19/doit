@@ -1,15 +1,25 @@
 "use client";
 
-import { apiRequest } from "../api-client";
-import type { UserResponse } from "../types";
+import { useCallback, useMemo } from "react";
+import { UpdateUserDto, UsersApi } from "../api-back";
+import "../api";
 
 export function useUsersHook() {
+  const usersApi = useMemo(() => new UsersApi(), []);
+
+  const me = useCallback(async () => {
+    return usersApi.usersControllerMe();
+  }, [usersApi]);
+
+  const updateMe = useCallback(
+    async (updateUserDto: UpdateUserDto) => {
+      return usersApi.usersControllerUpdateMe(updateUserDto);
+    },
+    [usersApi],
+  );
+
   return {
-    getProfile: () => apiRequest<UserResponse>("/users/me"),
-    updateProfile: (data: { name?: string; calendarSyncEnabled?: boolean }) =>
-      apiRequest<UserResponse>("/users/me", {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }),
+    me,
+    updateMe,
   };
 }

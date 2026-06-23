@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, GripVertical } from "lucide-react";
+import { TaskResponseDtoStatusEnum } from "@/services/api-back";
 
 import { DeadlineChip } from "@/components/doit/deadline-chip";
 import { initials } from "@/lib/date-utils";
@@ -16,6 +17,8 @@ interface TaskRowProps {
 }
 
 export function TaskRow({ task, person, showAssignee, onToggle, onOpen }: TaskRowProps) {
+  const done = task.status === TaskResponseDtoStatusEnum.Done;
+
   return (
     <div
       onClick={() => onOpen(task.id)}
@@ -37,13 +40,13 @@ export function TaskRow({ task, person, showAssignee, onToggle, onOpen }: TaskRo
         }}
         className={cn(
           "mt-px grid h-[21px] w-[21px] shrink-0 place-items-center rounded-[6.5px] border-2 border-line-2 bg-panel text-white transition-all hover:border-primary",
-          task.done && "border-primary bg-primary",
+          done && "border-primary bg-primary",
         )}
       >
         <Check
           className={cn(
             "h-[13px] w-[13px] transition-all",
-            task.done ? "scale-100 opacity-100" : "scale-50 opacity-0",
+            done ? "scale-100 opacity-100" : "scale-50 opacity-0",
           )}
           strokeWidth={3}
         />
@@ -53,19 +56,21 @@ export function TaskRow({ task, person, showAssignee, onToggle, onOpen }: TaskRo
         <span
           className={cn(
             "text-[15px] font-medium leading-[1.35] text-ink",
-            task.done && "text-ink-3 line-through decoration-ink-3",
+            done && "text-ink-3 line-through decoration-ink-3",
           )}
         >
           {task.title}
         </span>
 
-        {(task.deadline || (showAssignee && person && person.id !== "me")) && (
+        {(task.deadline || (showAssignee && person && person.id !== task.createdById)) && (
           <div className="flex flex-wrap items-center gap-2">
-            {task.deadline && <DeadlineChip deadline={task.deadline} done={task.done} />}
-            {showAssignee && person && person.id !== "me" && (
+            {typeof task.deadline === "string" && (
+              <DeadlineChip deadline={task.deadline} done={done} />
+            )}
+            {showAssignee && person && person.id !== task.createdById && (
               <span
                 className="grid h-[19px] w-[19px] place-items-center rounded-full text-[9.5px] font-bold text-white"
-                style={{ background: person.color }}
+                style={{ background: "var(--brand-blue)" }}
                 title={person.name}
               >
                 {initials(person.name)}

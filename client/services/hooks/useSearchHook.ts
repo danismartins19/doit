@@ -1,10 +1,20 @@
 "use client";
 
-import { apiRequest } from "../api-client";
-import type { TaskResponse } from "../types";
+import { useCallback, useMemo } from "react";
+import { SearchApi } from "../api-back";
+import "../api";
 
 export function useSearchHook() {
+  const searchApi = useMemo(() => new SearchApi(), []);
+
+  const tasks = useCallback(
+    async (q: string) => {
+      return searchApi.searchControllerTasks(q);
+    },
+    [searchApi],
+  );
+
   return {
-    searchTasks: (q: string) => apiRequest<TaskResponse[]>("/search/tasks", { query: { q } }),
+    tasks,
   };
 }
