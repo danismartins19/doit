@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
-import { AuthService } from '../auth/auth.service';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InviteResponseDto, OkResponseDto, ProjectResponseDto } from '../common/dto';
 import { AcceptInviteDto, CreateInviteDto } from './invites.dto';
 import { InvitesService } from './invites.service';
@@ -9,15 +9,14 @@ import { InvitesService } from './invites.service';
 @ApiTags('invites')
 @Controller()
 export class InvitesController {
-  constructor(
-    private readonly auth: AuthService,
-    private readonly invites: InvitesService,
-  ) {}
+  constructor(private readonly invites: InvitesService) {}
 
   @Post('projects/:projectId/invites')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create project invite. Owner only.' })
   @ApiCreatedResponse({ type: InviteResponseDto })
-  create(@Req() req: Request, @Param('projectId') projectId: string, @Body() body: CreateInviteDto) {
+  create(@Req() req: AuthenticatedRequest, @Param('projectId') projectId: string, @Body() body: CreateInviteDto) {
     return this.invites.create(projectId, this.userId(req), body);
   }
 
@@ -29,20 +28,24 @@ export class InvitesController {
   }
 
   @Post('invites/:token/accept')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Accept invite' })
   @ApiOkResponse({ type: ProjectResponseDto })
-  accept(@Req() req: Request, @Param('token') token: string, @Body() body: AcceptInviteDto) {
+  accept(@Req() req: AuthenticatedRequest, @Param('token') token: string, @Body() body: AcceptInviteDto) {
     return this.invites.accept(token, this.userId(req), body.calendarSyncMode);
   }
 
   @Post('invites/:token/decline')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Decline invite' })
   @ApiOkResponse({ type: OkResponseDto })
-  decline(@Req() req: Request, @Param('token') token: string) {
+  decline(@Req() req: AuthenticatedRequest, @Param('token') token: string) {
     return this.invites.decline(token, this.userId(req));
   }
 
-  private userId(req: Request) {
-    return this.auth.verifyToken(this.auth.getTokenFromRequest(req));
+  private userId(req: AuthenticatedRequest) {
+    return req.user.id;
   }
 }

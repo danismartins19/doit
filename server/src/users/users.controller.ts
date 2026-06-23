@@ -1,27 +1,24 @@
-import { Body, Controller, Get, Patch, Req } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
-import { AuthService } from '../auth/auth.service';
+import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserResponseDto } from '../common/dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './users.dto';
 
 @ApiTags('users')
 @Controller('users')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class UsersController {
-  constructor(
-    private readonly auth: AuthService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiOkResponse({ type: UserResponseDto })
-  async me(@Req() req: Request) {
-    const userId = this.auth.verifyToken(this.auth.getTokenFromRequest(req));
-
+  async me(@Req() req: AuthenticatedRequest) {
     return this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
+      where: { id: req.user.id },
       select: {
         id: true,
         name: true,
@@ -37,11 +34,9 @@ export class UsersController {
   @Patch('me')
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiOkResponse({ type: UserResponseDto })
-  async updateMe(@Req() req: Request, @Body() body: UpdateUserDto) {
-    const userId = this.auth.verifyToken(this.auth.getTokenFromRequest(req));
-
+  async updateMe(@Req() req: AuthenticatedRequest, @Body() body: UpdateUserDto) {
     return this.prisma.user.update({
-      where: { id: userId },
+      where: { id: req.user.id },
       data: body,
       select: {
         id: true,

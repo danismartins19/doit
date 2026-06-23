@@ -3,6 +3,7 @@ import { TaskStatus } from '@prisma/client';
 import { CalendarService } from '../calendar/calendar.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectsService } from '../projects/projects.service';
+import { ProjectGateway } from '../realtime/project.gateway';
 
 interface TaskInput {
   title?: string;
@@ -21,6 +22,7 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly projects: ProjectsService,
     private readonly calendar: CalendarService,
+    private readonly realtime: ProjectGateway,
   ) {}
 
   async list(projectId: string, userId: string, status?: TaskStatus) {
@@ -54,7 +56,9 @@ export class TasksService {
     });
 
     await this.calendar.syncTask(task.id);
-    return this.get(task.id, userId);
+    const syncedTask = await this.get(task.id, userId);
+    await this.broadcast('created', projectId, task.id, userId, syncedTask);
+    return syncedTask;
   }
 
   async get(taskId: string, userId: string) {
@@ -71,7 +75,12 @@ export class TasksService {
     return task;
   }
 
-  async update(taskId: string, userId: string, data: TaskInput) {
+  async update(
+    taskId: string,
+    userId: string,
+    data: TaskInput,
+    action: 'updated' | 'moved' | 'status-changed' | 'responsible-changed' = 'updated',
+  ) {
     const task = await this.get(taskId, userId);
     await this.assertResponsible(task.projectId, data.responsibleId);
 
@@ -81,27 +90,51 @@ export class TasksService {
     });
 
     await this.calendar.syncTask(taskId);
-    return this.get(taskId, userId);
+    const updatedTask = await this.get(taskId, userId);
+    await this.broadcast(action, updatedTask.projectId, taskId, userId, updatedTask);
+    return updatedTask;
   }
 
   async delete(taskId: string, userId: string) {
     const task = await this.get(taskId, userId);
     await this.calendar.deleteTaskEvent(task.id);
     await this.prisma.task.delete({ where: { id: taskId } });
+    await this.broadcast('deleted', task.projectId, taskId, userId);
 
     return { ok: true };
   }
 
   async move(taskId: string, userId: string, data: { day: Date; order?: number }) {
-    return this.update(taskId, userId, data);
+    return this.update(taskId, userId, data, 'moved');
   }
 
   async status(taskId: string, userId: string, status: TaskStatus) {
-    return this.update(taskId, userId, { status });
+    return this.update(taskId, userId, { status }, 'status-changed');
   }
 
   async responsible(taskId: string, userId: string, responsibleId: string | null) {
-    return this.update(taskId, userId, { responsibleId });
+    return this.update(taskId, userId, { responsibleId }, 'responsible-changed');
+  }
+
+  private async broadcast(
+    action: 'created' | 'updated' | 'deleted' | 'moved' | 'status-changed' | 'responsible-changed',
+    projectId: string,
+    taskId: string,
+    userId: string,
+    task?: unknown,
+  ) {
+    const actor = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+    });
+
+    this.realtime.broadcastTaskEvent({
+      action,
+      projectId,
+      taskId,
+      task,
+      actor,
+    });
   }
 
   private async assertResponsible(projectId: string, responsibleId?: string | null) {

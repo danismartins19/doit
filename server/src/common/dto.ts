@@ -11,16 +11,16 @@ export class UserResponseDto {
   @ApiProperty()
   email: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   avatarUrl?: string | null;
 
   @ApiProperty()
   calendarSyncEnabled: boolean;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
 }
 
@@ -40,7 +40,7 @@ export class ProjectMemberResponseDto {
   @ApiProperty({ enum: CalendarSyncMode })
   calendarSyncMode: CalendarSyncMode;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   joinedAt: Date;
 
   @ApiPropertyOptional({ type: () => UserResponseDto })
@@ -60,10 +60,10 @@ export class ProjectResponseDto {
   @ApiProperty()
   ownerId: string;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
 
   @ApiPropertyOptional({ type: () => UserResponseDto })
@@ -80,7 +80,7 @@ export class InviteResponseDto {
   @ApiProperty()
   projectId: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   email?: string | null;
 
   @ApiProperty()
@@ -92,13 +92,13 @@ export class InviteResponseDto {
   @ApiProperty()
   createdById: string;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   expiresAt: Date;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
   acceptedAt?: Date | null;
 
   @ApiPropertyOptional({ type: () => ProjectResponseDto })
@@ -115,22 +115,22 @@ export class TaskResponseDto {
   @ApiProperty()
   createdById: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   responsibleId?: string | null;
 
   @ApiProperty()
   title: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   description?: string | null;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   details?: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   day: Date;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
   deadline?: Date | null;
 
   @ApiProperty({ enum: TaskStatus })
@@ -139,13 +139,13 @@ export class TaskResponseDto {
   @ApiProperty()
   order: number;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   googleCalendarEventId?: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
 
   @ApiPropertyOptional({ type: () => ProjectResponseDto })

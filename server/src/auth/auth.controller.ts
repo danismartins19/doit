@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Patch, Post, Query, Req, Res } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
+import { Body, Controller, Get, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OkResponseDto, UserResponseDto } from '../common/dto';
-import { UpdateCalendarPreferenceDto } from './auth.dto';
+import { GoogleTokenLoginDto, GoogleTokenLoginResponseDto, UpdateCalendarPreferenceDto } from './auth.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import type { AuthenticatedRequest } from './authenticated-request';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -35,6 +37,25 @@ export class AuthController {
     return res.redirect(process.env.FRONTEND_URL ?? 'http://localhost:3000');
   }
 
+  @Post('google/token')
+  @ApiOperation({ summary: 'Exchange a Google token for an application token' })
+  @ApiOkResponse({ type: GoogleTokenLoginResponseDto })
+  async googleToken(@Body() body: GoogleTokenLoginDto) {
+    const { token, user } = await this.auth.handleGoogleTokenLogin(body);
+
+    return {
+      accessToken: token,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        calendarSyncEnabled: user.calendarSyncEnabled,
+      },
+    };
+  }
+
   @Post('logout')
   @ApiOperation({ summary: 'Logout current user' })
   @ApiOkResponse({ type: OkResponseDto })
@@ -44,13 +65,13 @@ export class AuthController {
   }
 
   @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get authenticated user' })
   @ApiOkResponse({ type: UserResponseDto })
-  async me(@Req() req: Request) {
-    const userId = this.auth.verifyToken(this.auth.getTokenFromRequest(req));
-
+  async me(@Req() req: AuthenticatedRequest) {
     return this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
+      where: { id: req.user.id },
       select: {
         id: true,
         name: true,
@@ -64,13 +85,13 @@ export class AuthController {
   }
 
   @Patch('me/calendar-preferences')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update global Google Calendar preference' })
   @ApiOkResponse({ type: UserResponseDto })
-  async updateCalendarPreference(@Req() req: Request, @Body() body: UpdateCalendarPreferenceDto) {
-    const userId = this.auth.verifyToken(this.auth.getTokenFromRequest(req));
-
+  async updateCalendarPreference(@Req() req: AuthenticatedRequest, @Body() body: UpdateCalendarPreferenceDto) {
     return this.prisma.user.update({
-      where: { id: userId },
+      where: { id: req.user.id },
       data: body,
       select: {
         id: true,

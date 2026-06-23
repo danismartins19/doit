@@ -11,6 +11,12 @@ interface GoogleProfile {
   picture?: string | null;
 }
 
+interface GoogleTokenLogin {
+  idToken: string;
+  accessToken?: string;
+  refreshToken?: string;
+}
+
 @Injectable()
 export class AuthService {
   private readonly cookieName = 'doit_token';
@@ -63,6 +69,46 @@ export class AuthService {
         googleRefreshToken: tokens.refresh_token ?? null,
       },
     });
+
+    return {
+      token: this.signUserToken(user.id),
+      user,
+    };
+  }
+
+  async handleGoogleTokenLogin({ idToken, accessToken, refreshToken }: GoogleTokenLogin) {
+    console.log("handleGoogleTokenLogin", { idToken, accessToken, refreshToken });
+    const ticket = await this.getOAuthClient().verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    console.log("ticket", ticket);
+    const payload = ticket.getPayload();
+    console.log("payload", payload);
+
+    if (!payload?.email || !payload.sub) {
+      throw new UnauthorizedException('Invalid Google token.');
+    }
+
+    const user = await this.prisma.user.upsert({
+      where: { email: payload.email },
+      update: {
+        name: payload.name ?? payload.email,
+        avatarUrl: payload.picture ?? null,
+        googleAccountId: payload.sub,
+        ...(accessToken ? { googleAccessToken: accessToken } : {}),
+        ...(refreshToken ? { googleRefreshToken: refreshToken } : {}),
+      },
+      create: {
+        email: payload.email,
+        name: payload.name ?? payload.email,
+        avatarUrl: payload.picture ?? null,
+        googleAccountId: payload.sub,
+        googleAccessToken: accessToken ?? null,
+        googleRefreshToken: refreshToken ?? null,
+      },
+    });
+    console.log("user", user);
 
     return {
       token: this.signUserToken(user.id),

@@ -9,6 +9,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { SearchModule } from './search/search.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UsersModule } from './users/users.module';
     ProjectsModule,
     InvitesModule,
     CalendarModule,
+    RealtimeModule,
     TasksModule,
     SearchModule,
   ],
